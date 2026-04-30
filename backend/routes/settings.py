@@ -121,10 +121,11 @@ def import_xml():
     if not xml_data:
         return jsonify({"error": "No XML data"}), 400
 
-    # [VULN-17] XXE: lxml parser used with default settings (resolve_entities not
-    # disabled). A malicious DOCTYPE can read /etc/passwd via file:// entity.
+    # [VULN-17] XXE: parser explicitly configured to load DTD and resolve external
+    # entities. A malicious DOCTYPE can read /etc/passwd via file:// entity.
     try:
-        root = etree.fromstring(xml_data)
+        parser = etree.XMLParser(load_dtd=True, resolve_entities=True, no_network=False)
+        root = etree.fromstring(xml_data, parser)
     except etree.XMLSyntaxError as e:
         return jsonify({"error": f"XML parse error: {e}"}), 400
 

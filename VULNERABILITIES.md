@@ -36,14 +36,19 @@
 
 ## Ideal Deliveries
 
-The ideal deliveries define the delivery-level ground truth. Each ideal delivery specifies a reviewer-oriented repair boundary: it groups one or more related answer-key vulnerabilities that should ideally be fixed and reviewed together because they share a code path, trust boundary, authentication flow, rendering pattern, or cross-cutting control.
+Ideal deliveries define the preferred *review shape* of the answer key: **one ideal delivery should map to one self-contained PR**.
+Each ideal delivery is a reviewer-oriented repair boundary that groups vulnerabilities only when doing so improves reviewability—because the fixes share a code path, trust boundary, authentication/session flow, rendering/sanitization strategy, or another cross-cutting control.
+The goal is that each delivery can be reviewed, tested, and rolled back independently with minimal overlap.
 
 | Ideal delivery | Answer-key items | Rationale |
 |---|---|---|
-| Login and authentication abuse controls | #1, #2, #3, #4 | These issues share the authentication entrypoint and its immediate trust boundary: login query construction, post-login redirect handling, brute-force resistance, and the JWT secret used to establish authenticated sessions. |
+| Login endpoint hardening | #1, #2, #3 | These issues share the login handler and authentication flow. A reviewer can assess query safety, brute-force resistance, and post-login redirect validation together. |
+| JWT secret hardening | #4 | JWT signing is a separate trust anchor from the login handler implementation. Keeping it as a separate delivery makes the config change easy to review and roll back independently. |
 | Admin authorization gate (remove header bypass) | #19 | Admin-only routes rely on a common `require_admin()` control. The header-based override is a single high-impact bypass and should be removed and reviewed as one authorization-boundary fix. |
 | User data access and profile update controls | #5, #6, #7 | These issues share `routes/users.py` and the user object trust boundary: object-level authorization (IDOR), update-field allowlisting (mass assignment), and response serialization (do not expose password hashes). |
-| Post query + ownership + rendering safety | #8, #9, #10, #20, #21 | These issues share `routes/posts.py` and the post/comment content boundary: safe query construction for search, ownership checks for edit/delete, and consistent HTML escaping/sanitization for stored/reflected content surfaces. |
+| Post query construction safety | #8 | Search uses dynamic SQL construction. This delivery focuses on parameterization and consistent query building without mixing in authorization or rendering changes. |
+| Post ownership authorization | #10 | Edit/delete actions need object-level authorization checks. Keeping this separate reduces reviewer load and allows dedicated tests around ownership enforcement. |
+| Content rendering and sanitization safety | #9, #20, #21 | Stored/reflected XSS issues share a common content-trust boundary. They should be addressed with one consistent sanitization/escaping strategy across post and comment surfaces. |
 | Media file handling and OS interaction boundary | #11, #11b, #12, #13 | Download/preview path traversal, upload type restrictions, and thumbnail generation all connect user input to filesystem paths or OS-level execution; they should be reviewed together with one normalization, confinement, and safe process-exec strategy. |
 | Settings fetch/import parser safety | #14, #15, #16, #17 | Outbound URL fetch (SSRF), configuration/credential exposure, and import parsing (pickle / XML) form a single settings-admin trust boundary and should be hardened together with allowlists and safe parsers. |
 | Error handling and response minimization | #18 | Returning full stack traces is a distinct cross-cutting output control. Review it independently to ensure consistent error responses and server-side logging. |

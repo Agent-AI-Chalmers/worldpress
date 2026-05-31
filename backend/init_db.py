@@ -1,14 +1,14 @@
-import hashlib
 from database import init_db, get_db
 from config import DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS
+from password_utils import hash_password
 
 
 def seed_data():
     conn = get_db()
     cur = conn.cursor()
 
-    admin_pw = hashlib.md5(DEFAULT_ADMIN_PASS.encode()).hexdigest()
-    editor_pw = hashlib.md5("editor123".encode()).hexdigest()
+    admin_pw = hash_password(DEFAULT_ADMIN_PASS)
+    editor_pw = hash_password("editor123")
 
     cur.execute("""
         INSERT OR IGNORE INTO users (username, password, email, role)

@@ -1,9 +1,9 @@
-import hashlib
 import time
 import jwt
 from flask import Blueprint, request, jsonify
 from database import get_db
 from config import APP_SECRET, TOKEN_EXPIRY
+from password_utils import hash_password, verify_password
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -43,20 +43,26 @@ def login():
     username = data.get("username", "")
     password = data.get("password", "")
 
-    # [VULN-01] SQL Injection: user input concatenated directly into query string
-    hashed = hashlib.md5(password.encode()).hexdigest()
-    query = (
-        f"SELECT * FROM users WHERE username='{username}' AND password='{hashed}'"
-    )
-
     conn = get_db()
     try:
-        user = conn.execute(query).fetchone()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username=?", (username,)
+        ).fetchone()
     finally:
         conn.close()
 
-    if not user:
+    if not user or not verify_password(password, user["password"]):
         return jsonify({"error": "Invalid credentials"}), 401
+
+    # Transparently re-hash legacy MD5 passwords on successful login
+    if not user["password"].startswith("pbkdf2:sha256:"):
+        new_hash = hash_password(password)
+        conn = get_db()
+        conn.execute(
+            "UPDATE users SET password=? WHERE id=?", (new_hash, user["id"])
+        )
+        conn.commit()
+        conn.close()
 
     conn = get_db()
     conn.execute(
@@ -127,7 +133,7 @@ def register():
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
 
-    hashed = hashlib.md5(password.encode()).hexdigest()
+    hashed = hash_password(password)
 
     conn = get_db()
     try:

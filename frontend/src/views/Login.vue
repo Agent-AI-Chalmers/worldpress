@@ -61,13 +61,8 @@ async function handleLogin() {
   const redirect = route.query.redirect || ''
   try {
     const data = await auth.login(form, redirect)
-    // Use the redirect value returned by the server directly
-    const target = data.redirect || '/dashboard'
-    if (target.startsWith('http')) {
-      window.location.href = target
-    } else {
-      router.push(target)
-    }
+    // Use the redirect value returned by the server (now validated to be a safe relative path)
+    router.push(data.redirect || '/dashboard')
   } catch (e) {
     error.value = e.response?.data?.error || 'Login failed'
   }

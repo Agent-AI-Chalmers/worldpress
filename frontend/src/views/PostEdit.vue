@@ -67,8 +67,7 @@
           <el-empty v-if="!comments.length" description="No comments yet" :image-size="60" />
           <div v-for="c in comments" :key="c.id" class="comment-item">
             <div class="comment-author">{{ c.author }}</div>
-            <!-- Raw HTML rendering to display formatted comment content -->
-            <div class="comment-body" v-html="c.content"></div>
+            <div class="comment-body">{{ c.content }}</div>
             <div class="comment-date">{{ c.created_at }}</div>
           </div>
         </el-card>

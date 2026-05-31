@@ -5,7 +5,6 @@ from flask import Blueprint, request, jsonify
 from lxml import etree
 from database import get_db
 from routes.auth import get_current_user
-from config import DEFAULT_ADMIN_USER, DEFAULT_ADMIN_PASS
 
 settings_bp = Blueprint("settings", __name__)
 
@@ -28,12 +27,6 @@ def get_settings():
     conn.close()
 
     result = {r["key"]: r["value"] for r in rows}
-
-    # [VULN-15] Sensitive Data Exposure / Hardcoded Credentials returned in API
-    result["_system"] = {
-        "default_admin": DEFAULT_ADMIN_USER,
-        "default_password": DEFAULT_ADMIN_PASS,
-    }
 
     return jsonify(result)
 

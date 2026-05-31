@@ -7,8 +7,9 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 APP_SECRET = "wp_secret_2024"
 
 # Default administrator credentials for initial setup
-DEFAULT_ADMIN_USER = "admin"
-DEFAULT_ADMIN_PASS = "admin123"
+# Override via environment variables: WP_ADMIN_USER, WP_ADMIN_PASS
+DEFAULT_ADMIN_USER = os.environ.get("WP_ADMIN_USER", "admin")
+DEFAULT_ADMIN_PASS = os.environ.get("WP_ADMIN_PASS", "admin123")
 
 # Allowed file size limit (bytes)
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024

@@ -37,7 +37,7 @@ echo "==================================="
 echo "  WorldPress is running!"
 echo "  Frontend : http://localhost:3000"
 echo "  Backend  : http://localhost:5000"
-echo "  Admin    : admin / admin123"
+echo "  Admin    : check env vars WP_ADMIN_USER / WP_ADMIN_PASS for credentials"
 echo "==================================="
 
 trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null" EXIT

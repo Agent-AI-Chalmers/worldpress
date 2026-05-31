@@ -29,7 +29,7 @@ def list_users():
     conn = get_db()
     # [VULN-07] Sensitive Data Exposure: password hash included in list response
     rows = conn.execute(
-        "SELECT id, username, email, role, password, bio, avatar, created_at, last_login FROM users"
+        "SELECT id, username, email, role, bio, avatar, created_at, last_login FROM users"
     ).fetchall()
     conn.close()
 
@@ -46,7 +46,7 @@ def get_user(user_id):
     # [VULN-05] IDOR: any authenticated user can fetch any user's profile by ID
     # [VULN-07b] Sensitive Data Exposure: password hash returned in profile detail
     row = conn.execute(
-        "SELECT id, username, email, role, password, bio, avatar, created_at, last_login FROM users WHERE id=?",
+        "SELECT id, username, email, role, bio, avatar, created_at, last_login FROM users WHERE id=?",
         (user_id,),
     ).fetchone()
     conn.close()
@@ -115,14 +115,14 @@ def export_users():
 
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, username, email, role, password, created_at FROM users"
+        "SELECT id, username, email, role, created_at FROM users"
     ).fetchall()
     conn.close()
 
-    csv_lines = ["id,username,email,role,password,created_at"]
+    csv_lines = ["id,username,email,role,created_at"]
     for r in rows:
         csv_lines.append(
-            f"{r['id']},{r['username']},{r['email']},{r['role']},{r['password']},{r['created_at']}"
+            f"{r['id']},{r['username']},{r['email']},{r['role']},{r['created_at']}"
         )
 
     return "\n".join(csv_lines), 200, {

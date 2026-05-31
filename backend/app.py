@@ -1,3 +1,4 @@
+import os
 import traceback
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -37,5 +38,5 @@ def health():
 
 if __name__ == "__main__":
     init_db()
-    # Debug mode left on; never do this in production
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug)

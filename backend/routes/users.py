@@ -57,6 +57,12 @@ def get_user(user_id):
     return jsonify(dict(row))
 
 
+# Columns that users are allowed to update via their profile endpoint.
+# Sensitive columns like role, id, created_at, and last_login are excluded
+# to prevent privilege escalation and mass assignment.
+ALLOWED_UPDATE_COLUMNS = {"username", "email", "password", "bio", "avatar"}
+
+
 @users_bp.route("/<int:user_id>", methods=["PUT"])
 def update_user(user_id):
     user, err, code = require_auth()
@@ -65,10 +71,15 @@ def update_user(user_id):
 
     data = request.json or {}
 
-    # [VULN-06] Mass Assignment: all fields from client body passed into UPDATE
-    # An attacker can set role='admin' or overwrite password directly
+    # [VULN-06] Mass Assignment: allowlist restricts updatable fields
     if not data:
         return jsonify({"error": "No data provided"}), 400
+
+    # Reject any column not in the allowlist to prevent mass assignment
+    # to sensitive columns like role, id, created_at, or last_login.
+    unexpected = [k for k in data if k not in ALLOWED_UPDATE_COLUMNS]
+    if unexpected:
+        return jsonify({"error": f"Unexpected fields: {', '.join(unexpected)}"}), 400
 
     set_parts = []
     values = []

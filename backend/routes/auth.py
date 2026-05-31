@@ -43,15 +43,12 @@ def login():
     username = data.get("username", "")
     password = data.get("password", "")
 
-    # [VULN-01] SQL Injection: user input concatenated directly into query string
     hashed = hashlib.md5(password.encode()).hexdigest()
-    query = (
-        f"SELECT * FROM users WHERE username='{username}' AND password='{hashed}'"
-    )
+    query = "SELECT * FROM users WHERE username=? AND password=?"
 
     conn = get_db()
     try:
-        user = conn.execute(query).fetchone()
+        user = conn.execute(query, (username, hashed)).fetchone()
     finally:
         conn.close()
 

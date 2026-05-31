@@ -1,3 +1,4 @@
+import os
 import traceback
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -9,7 +10,13 @@ from routes.media import media_bp
 from routes.settings import settings_bp
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Restrict CORS to trusted origins from environment, defaulting to the dev frontend.
+# Production deployments should set CORS_ORIGINS to a comma-separated list of
+# allowed frontend domains (e.g., "https://admin.example.com").
+cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
+cors_origins = [o.strip() for o in cors_origins if o.strip()]
+CORS(app, resources={r"/api/*": {"origins": cors_origins}})
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(users_bp, url_prefix="/api/users")

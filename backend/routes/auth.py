@@ -21,8 +21,7 @@ def generate_token(user_id, username, role):
 
 def decode_token(token):
     try:
-        # [VULN-04b] algorithm list not restricted — accepts 'none' if crafted
-        return jwt.decode(token, APP_SECRET, algorithms=["HS256", "none"])
+        return jwt.decode(token, APP_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:

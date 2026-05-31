@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from database import get_db
 from routes.auth import get_current_user
-import hashlib
+from password_utils import hash_password
 
 users_bp = Blueprint("users", __name__)
 
@@ -74,7 +74,7 @@ def update_user(user_id):
     values = []
     for key, val in data.items():
         if key == "password":
-            val = hashlib.md5(str(val).encode()).hexdigest()
+            val = hash_password(str(val))
         set_parts.append(f"{key}=?")
         values.append(val)
 

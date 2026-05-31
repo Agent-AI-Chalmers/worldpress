@@ -29,6 +29,18 @@ def decode_token(token):
         return None
 
 
+def is_safe_redirect_url(url):
+    """Ensure the redirect URL is a relative path only (not an external URL)."""
+    if not url:
+        return False
+    if not url.startswith("/"):
+        return False
+    # Block protocol-relative URLs like //evil.com
+    if url.startswith("//"):
+        return False
+    return True
+
+
 def get_current_user():
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -67,8 +79,10 @@ def login():
 
     token = generate_token(user["id"], user["username"], user["role"])
 
-    # [VULN-02] Open Redirect: redirect parameter not validated against allowlist
+    # [VULN-02] Open Redirect: redirect parameter validated against allowlist
     redirect_to = request.args.get("redirect", "/dashboard")
+    if not is_safe_redirect_url(redirect_to):
+        redirect_to = "/dashboard"
 
     return jsonify({
         "token": token,

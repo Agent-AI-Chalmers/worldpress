@@ -122,6 +122,10 @@ def update_post(post_id):
         conn.close()
         return jsonify({"error": "Post not found"}), 404
 
+    if existing["author_id"] != user["user_id"]:
+        conn.close()
+        return jsonify({"error": "Forbidden"}), 403
+
     data = request.json or {}
     title = data.get("title", existing["title"])
     # [VULN-09b] Stored XSS persists through updates too
@@ -147,8 +151,16 @@ def delete_post(post_id):
     if err:
         return err, code
 
-    # [VULN-10b] IDOR: any logged-in user can delete any post
     conn = get_db()
+    existing = conn.execute("SELECT * FROM posts WHERE id=?", (post_id,)).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({"error": "Post not found"}), 404
+
+    if existing["author_id"] != user["user_id"]:
+        conn.close()
+        return jsonify({"error": "Forbidden"}), 403
+
     conn.execute("DELETE FROM posts WHERE id=?", (post_id,))
     conn.commit()
     conn.close()

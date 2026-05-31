@@ -124,7 +124,7 @@ def import_xml():
     # [VULN-17] XXE: parser explicitly configured to load DTD and resolve external
     # entities. A malicious DOCTYPE can read /etc/passwd via file:// entity.
     try:
-        parser = etree.XMLParser(load_dtd=True, resolve_entities=True, no_network=False)
+        parser = etree.XMLParser(load_dtd=False, resolve_entities=False, no_network=True)
         root = etree.fromstring(xml_data, parser)
     except etree.XMLSyntaxError as e:
         return jsonify({"error": f"XML parse error: {e}"}), 400

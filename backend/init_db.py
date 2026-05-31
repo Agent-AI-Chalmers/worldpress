@@ -45,7 +45,6 @@ def seed_data():
     conn.commit()
     conn.close()
     print("Database initialized with seed data.")
-    print(f"Admin login: {DEFAULT_ADMIN_USER} / {DEFAULT_ADMIN_PASS}")
 
 
 if __name__ == "__main__":

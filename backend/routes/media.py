@@ -6,6 +6,21 @@ from database import get_db
 from routes.auth import get_current_user
 from config import UPLOAD_FOLDER
 
+# [MITIGATION-12] Allowed extensions for file uploads — prevents upload of
+# executable script files (.py, .php, .js) and browser-renderable content
+# (.html, .htm, .svg, .xml) that would cause stored XSS via the inline
+# /api/media/preview endpoint.
+ALLOWED_EXTENSIONS = {
+    # Images
+    "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "tif", "ico",
+    # Video
+    "mp4", "webm", "avi", "mov", "mkv", "wmv", "flv",
+    # Audio
+    "mp3", "wav", "ogg", "aac", "flac", "wma",
+    # Documents (safe to serve inline or as download)
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt",
+}
+
 media_bp = Blueprint("media", __name__)
 
 
@@ -49,6 +64,15 @@ def upload_file():
     # path traversal, but no MIME type or extension validation is performed.
     # Attackers can upload .py, .php, or other executable files.
     filename = secure_filename(f.filename)
+
+    # [MITIGATION-12] Extension allowlist check — reject any file whose
+    # extension is not in ALLOWED_EXTENSIONS. This prevents upload of
+    # .html/.svg/.js/.py files that could be rendered inline (stored XSS)
+    # or executed server-side.
+    ext = os.path.splitext(filename)[1].lstrip(".").lower()
+    if not ext or ext not in ALLOWED_EXTENSIONS:
+        return jsonify({"error": "File type not allowed"}), 400
+
     save_path = os.path.join(UPLOAD_FOLDER, filename)
     f.save(save_path)
 

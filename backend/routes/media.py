@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 from flask import Blueprint, request, jsonify, send_file
 from werkzeug.utils import secure_filename
@@ -106,16 +107,18 @@ def generate_thumbnail():
         return err, code
 
     data = request.json or {}
-    filename = data.get("filename", "")
-    # [VULN-13] Command Injection: filename and size from client inserted directly
-    # into a shell command via os.system. Payload: filename = "a.jpg; id > /tmp/pwn"
+    filename = secure_filename(data.get("filename", ""))
+    if not filename:
+        return jsonify({"error": "Invalid filename"}), 400
+
     size = data.get("size", "150x150")
+    if not re.match(r'^\d+x\d+$', size):
+        return jsonify({"error": "Invalid size format"}), 400
 
     src = os.path.join(UPLOAD_FOLDER, filename)
     dst = os.path.join(UPLOAD_FOLDER, f"thumb_{filename}")
 
-    cmd = f"convert {src} -resize {size} {dst}"
-    ret = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    ret = subprocess.run(["convert", src, "-resize", size, dst], capture_output=True, text=True)
 
     if ret.returncode != 0:
         return jsonify({"error": "Thumbnail generation failed", "detail": ret.stderr}), 500

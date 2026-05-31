@@ -1,5 +1,9 @@
 import base64
+import ipaddress
 import pickle
+import socket
+from urllib.parse import urlparse
+
 import requests as http_requests
 from flask import Blueprint, request, jsonify
 from lxml import etree
@@ -56,6 +60,87 @@ def update_settings():
     return jsonify({"message": "Settings updated"})
 
 
+# SSRF validation for fetch_remote_resource
+_BLOCKED_INTERNAL_TLDS = (".internal", ".local", ".localhost", ".localdomain")
+
+_BLOCKED_HOSTNAMES = frozenset({
+    "localhost",
+    "127.0.0.1",
+    "::1",      # IPv6 loopback
+    "::",       # IPv6 unspecified (urlparse.hostname returns '::' without brackets)
+    "0.0.0.0",
+})
+
+
+def _validate_url(url):
+    """Validate a URL for SSRF safety. Returns (is_valid, error_message)."""
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+
+    # Restrict to http / https only
+    if scheme not in ("http", "https"):
+        return False, "Only http and https URLs are allowed"
+
+    hostname = parsed.hostname
+    if not hostname:
+        return False, "URL must have a hostname"
+
+    lower_hostname = hostname.lower()
+
+    # Block known internal hostname literals
+    if lower_hostname in _BLOCKED_HOSTNAMES:
+        return False, "URL hostname is not allowed"
+
+    # Block internal-only TLDs
+    if lower_hostname.endswith(_BLOCKED_INTERNAL_TLDS):
+        return False, "URL hostname is not allowed"
+
+    # Resolve hostname to IP addresses and validate each
+    try:
+        addrs = socket.getaddrinfo(hostname, None)
+    except OSError:
+        return False, "Could not resolve hostname"
+
+    for family, _, _, _, sockaddr in addrs:
+        ip_str = sockaddr[0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            return False, f"Invalid IP address: {ip_str}"
+
+        if _is_ip_blocked(ip):
+            return False, "URL resolves to an internal IP address"
+
+    return True, None
+
+
+def _is_ip_blocked(ip):
+    """Check whether an IP address is internal / private / link-local / loopback.
+
+    Handles both plain IPv4/IPv6 and IPv4-mapped IPv6 addresses (e.g.
+    ``::ffff:10.0.0.1``) where the embedded IPv4 is checked directly.
+    """
+    # IPv4-mapped IPv6 — check the embedded IPv4 address
+    if ip.version == 6 and ip.ipv4_mapped is not None:
+        mapped = ip.ipv4_mapped
+        return (
+            mapped.is_private
+            or mapped.is_loopback
+            or mapped.is_link_local
+            or mapped.is_unspecified
+            or mapped.is_multicast
+        )
+
+    # Standard IPv4 or native IPv6
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_unspecified
+        or ip.is_multicast
+    )
+
+
 @settings_bp.route("/fetch-url", methods=["POST"])
 def fetch_remote_resource():
     if not require_admin():
@@ -68,8 +153,14 @@ def fetch_remote_resource():
 
     # [VULN-14] SSRF: URL fetched from user input without restriction.
     # Attackers can probe internal services: http://169.254.169.254/latest/meta-data/
+    #
+    # Mitigation: validate URL before making the request.
+    valid, err = _validate_url(url)
+    if not valid:
+        return jsonify({"error": err}), 400
+
     try:
-        resp = http_requests.get(url, timeout=10)
+        resp = http_requests.get(url, timeout=10, allow_redirects=False)
         return jsonify({
             "status_code": resp.status_code,
             "content_type": resp.headers.get("Content-Type", ""),

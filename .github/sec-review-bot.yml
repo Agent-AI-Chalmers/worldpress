@@ -1,0 +1,16 @@
+sec_review_bot:
+  # Controls automatic PR / issue webhook review.
+  #
+  # - automatic: supported pull_request / issue events trigger reviews;
+  #   manual comment commands remain available.
+  # - manual_only: automatic PR / issue events are ignored;
+  #   only explicit comment commands trigger reviews.
+  trigger_mode: manual_only
+
+  # Optional repository discovery ignore patterns (CodeQL-style glob semantics).
+  # Examples:
+  # - 'frontend/src/assets'
+  # - '**/*.min.js'
+  # - 'node_modules'
+  paths_ignore:
+    - '.github'

@@ -1,4 +1,3 @@
-import traceback
 from flask import Flask, jsonify
 from flask_cors import CORS
 from database import init_db
@@ -20,13 +19,11 @@ app.register_blueprint(settings_bp, url_prefix="/api/settings")
 
 # [VULN-18] Information Disclosure: unhandled exceptions expose full stack traces
 # and internal module paths to the client in a JSON response.
+# Fixed: Return generic error message instead of internal details.
 @app.errorhandler(Exception)
 def handle_exception(e):
-    tb = traceback.format_exc()
     return jsonify({
-        "error": str(e),
-        "type": type(e).__name__,
-        "traceback": tb,
+        "error": "An internal error occurred",
     }), 500
 
 
@@ -37,5 +34,5 @@ def health():
 
 if __name__ == "__main__":
     init_db()
-    # Debug mode left on; never do this in production
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Debug mode must be disabled in production
+    app.run(host="0.0.0.0", port=5000, debug=False)

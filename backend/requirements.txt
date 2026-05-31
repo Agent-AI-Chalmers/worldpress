@@ -3,4 +3,5 @@ Flask-CORS==4.0.1
 PyJWT==2.8.0
 Werkzeug==3.0.3
 requests==2.32.3
+bleach==6.1.0
 lxml==5.2.2

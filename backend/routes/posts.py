@@ -24,18 +24,21 @@ def list_posts():
     conn = get_db()
 
     if search:
-        # [VULN-08] SQL Injection: search parameter concatenated into LIKE query
         query = (
-            f"SELECT p.*, u.username as author_name FROM posts p "
-            f"LEFT JOIN users u ON p.author_id = u.id "
-            f"WHERE (p.title LIKE '%{search}%' OR p.content LIKE '%{search}%')"
+            "SELECT p.*, u.username as author_name FROM posts p "
+            "LEFT JOIN users u ON p.author_id = u.id "
+            "WHERE (p.title LIKE ? OR p.content LIKE ?)"
         )
+        params = [f"%{search}%", f"%{search}%"]
         if category:
-            query += f" AND p.category='{category}'"
+            query += " AND p.category=?"
+            params.append(category)
         if status:
-            query += f" AND p.status='{status}'"
-        query += f" ORDER BY p.created_at DESC LIMIT {per_page} OFFSET {offset}"
-        rows = conn.execute(query).fetchall()
+            query += " AND p.status=?"
+            params.append(status)
+        query += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+        params.extend([per_page, offset])
+        rows = conn.execute(query, params).fetchall()
     else:
         base = (
             "SELECT p.*, u.username as author_name FROM posts p "

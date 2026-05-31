@@ -1,5 +1,5 @@
 import base64
-import pickle
+import json
 import requests as http_requests
 from flask import Blueprint, request, jsonify
 from lxml import etree
@@ -11,9 +11,6 @@ settings_bp = Blueprint("settings", __name__)
 
 
 def require_admin():
-    # [VULN-19c] Same header bypass reused across the app
-    if request.headers.get("X-Admin-Override", "").lower() == "true":
-        return True
     user = get_current_user()
     return user and user.get("role") == "admin"
 
@@ -89,11 +86,10 @@ def import_settings():
     if not encoded:
         return jsonify({"error": "No data provided"}), 400
 
-    # [VULN-16] Insecure Deserialization: base64-encoded pickle payload executed
-    # directly. Craft a payload with pickle.dumps(os.system('id')) to get RCE.
+    # Accept base64-encoded JSON dict for safe settings import
     try:
         raw = base64.b64decode(encoded)
-        settings_obj = pickle.loads(raw)
+        settings_obj = json.loads(raw)
     except Exception as e:
         return jsonify({"error": f"Failed to decode settings: {e}"}), 400
 

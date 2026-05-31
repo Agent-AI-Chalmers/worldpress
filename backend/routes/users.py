@@ -14,9 +14,6 @@ def require_auth():
 
 
 def require_admin():
-    # [VULN-19] Broken Access Control: X-Admin-Override header bypasses role check
-    if request.headers.get("X-Admin-Override", "").lower() == "true":
-        return True
     user = get_current_user()
     return user and user.get("role") == "admin"
 

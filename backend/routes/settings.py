@@ -76,7 +76,7 @@ def fetch_remote_resource():
             "body": resp.text[:4096],
         })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Failed to fetch remote resource"}), 500
 
 
 @settings_bp.route("/import", methods=["POST"])
@@ -95,7 +95,7 @@ def import_settings():
         raw = base64.b64decode(encoded)
         settings_obj = pickle.loads(raw)
     except Exception as e:
-        return jsonify({"error": f"Failed to decode settings: {e}"}), 400
+        return jsonify({"error": "Failed to decode settings"}), 400
 
     if not isinstance(settings_obj, dict):
         return jsonify({"error": "Invalid settings format"}), 400
@@ -127,7 +127,7 @@ def import_xml():
         parser = etree.XMLParser(load_dtd=True, resolve_entities=True, no_network=False)
         root = etree.fromstring(xml_data, parser)
     except etree.XMLSyntaxError as e:
-        return jsonify({"error": f"XML parse error: {e}"}), 400
+        return jsonify({"error": "XML parse error"}), 400
 
     conn = get_db()
     imported = 0

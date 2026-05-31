@@ -87,7 +87,7 @@ def update_user(user_id):
         conn.commit()
     except Exception as e:
         conn.close()
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": "Failed to update user"}), 400
     finally:
         conn.close()
 

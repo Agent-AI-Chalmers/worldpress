@@ -16,6 +16,20 @@ def require_auth():
     return user, None, None
 
 
+def _safe_media_path(user_path):
+    """Resolve *user_path* safely inside UPLOAD_FOLDER.
+
+    Returns an absolute canonical path if the resolved result is within the
+    uploads directory, otherwise returns ``None``.
+    """
+    joined = os.path.join(UPLOAD_FOLDER, user_path)
+    resolved = os.path.realpath(joined)
+    upload_base = os.path.realpath(UPLOAD_FOLDER)
+    if not resolved.startswith(upload_base + os.sep) and resolved != upload_base:
+        return None
+    return resolved
+
+
 @media_bp.route("", methods=["GET"])
 def list_media():
     user, err, code = require_auth()
@@ -77,9 +91,9 @@ def download_file():
     if not filename:
         return jsonify({"error": "Filename required"}), 400
 
-    # [VULN-11] Path Traversal: user-supplied filename joined without normalization
-    # check. Requests like ?file=../../config.py escape the uploads directory.
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = _safe_media_path(filename)
+    if file_path is None:
+        return jsonify({"error": "Invalid file path"}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found"}), 404
@@ -89,14 +103,22 @@ def download_file():
 
 @media_bp.route("/preview", methods=["GET"])
 def preview_file():
-    # [VULN-11b] Second path traversal on a different endpoint (no auth required)
-    path = request.args.get("path", "")
-    full_path = UPLOAD_FOLDER + "/" + path  # raw string concat, no normalization
+    user, err, code = require_auth()
+    if err:
+        return err, code
 
-    if not os.path.exists(full_path):
+    path = request.args.get("path", "")
+    if not path:
+        return jsonify({"error": "Path required"}), 400
+
+    file_path = _safe_media_path(path)
+    if file_path is None:
+        return jsonify({"error": "Invalid path"}), 400
+
+    if not os.path.exists(file_path):
         return jsonify({"error": "Not found"}), 404
 
-    return send_file(full_path)
+    return send_file(file_path)
 
 
 @media_bp.route("/thumbnail", methods=["POST"])

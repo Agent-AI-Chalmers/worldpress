@@ -1,6 +1,67 @@
+import bleach
 from flask import Blueprint, request, jsonify
 from database import get_db
 from routes.auth import get_current_user
+
+
+ALLOWED_TAGS = [
+    # Structural
+    "p", "div", "span", "h1", "h2", "h3", "h4", "h5", "h6",
+    "header", "footer", "section", "article", "nav", "aside", "main",
+    "figure", "figcaption", "details", "summary",
+    # Text formatting
+    "b", "i", "u", "s", "em", "strong", "small", "mark", "sub", "sup",
+    "ins", "del", "abbr", "dfn", "kbd", "q", "samp", "var", "bdi", "bdo",
+    "cite", "code", "pre", "blockquote", "address",
+    # Lists
+    "ul", "ol", "li", "dl", "dt", "dd",
+    # Tables
+    "table", "caption", "colgroup", "col", "thead", "tbody", "tfoot", "tr", "th", "td",
+    # Links & media
+    "a", "img",
+    # Misc
+    "hr", "br", "wbr", "time", "ruby", "rp", "rt",
+]
+
+ALLOWED_ATTRIBUTES = {
+    "a": ["href", "title", "rel", "target", "download", "hreflang"],
+    "img": ["src", "alt", "title", "width", "height", "loading"],
+    "*": [
+        "class", "id", "style", "lang", "dir",
+        "colspan", "rowspan", "headers", "scope",
+        "align", "valign",
+        "datetime", "cite",
+        "start", "reversed", "type",
+    ],
+}
+
+ALLOWED_STYLES = [
+    "color", "background-color", "background",
+    "font-family", "font-size", "font-weight", "font-style",
+    "text-align", "text-decoration", "text-transform",
+    "line-height", "letter-spacing", "word-spacing",
+    "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+    "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+    "border", "border-top", "border-right", "border-bottom", "border-left",
+    "border-collapse", "border-color", "border-style", "border-width",
+    "width", "height", "max-width", "max-height",
+    "display", "float", "clear",
+    "vertical-align", "white-space",
+    "overflow", "visibility",
+]
+
+
+def sanitize_html(value):
+    """Sanitize HTML content to prevent XSS while preserving safe formatting tags."""
+    if not value:
+        return value
+    return bleach.clean(
+        value,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRIBUTES,
+        styles=ALLOWED_STYLES,
+        strip=True,
+    )
 
 posts_bp = Blueprint("posts", __name__)
 
@@ -87,8 +148,8 @@ def create_post():
 
     data = request.json or {}
     title = data.get("title", "").strip()
-    # [VULN-09] Stored XSS: HTML content stored as-is without sanitization
-    content = data.get("content", "")
+    # [VULN-09] Stored XSS: HTML content sanitized before storage
+    content = sanitize_html(data.get("content", ""))
     excerpt = data.get("excerpt", "")
     status = data.get("status", "draft")
     category = data.get("category", "General")
@@ -124,8 +185,8 @@ def update_post(post_id):
 
     data = request.json or {}
     title = data.get("title", existing["title"])
-    # [VULN-09b] Stored XSS persists through updates too
-    content = data.get("content", existing["content"])
+    # [VULN-09b] Stored XSS persists through updates too — sanitize content
+    content = sanitize_html(data.get("content", existing["content"]))
     excerpt = data.get("excerpt", existing["excerpt"])
     status = data.get("status", existing["status"])
     category = data.get("category", existing["category"])
@@ -172,8 +233,8 @@ def add_comment(post_id):
     data = request.json or {}
     author = data.get("author", "Anonymous")
     email = data.get("email", "")
-    # [VULN-20] Stored XSS in comments — content not sanitized
-    content = data.get("content", "")
+    # [VULN-20] Stored XSS in comments — content sanitized before storage
+    content = sanitize_html(data.get("content", ""))
 
     if not content:
         # [VULN-21] Reflected XSS: user-supplied 'author' echoed back in error HTML
